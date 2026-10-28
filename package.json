@@ -1,0 +1,35 @@
+{
+  "name": "index-server",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "Local anime/drama index with HTTP directory + RSS sources, qBittorrent downloads and external player playback.",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc -p tsconfig.json && node scripts/copy-assets.mjs",
+    "start": "node --disable-warning=ExperimentalWarning dist/server.js",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@fastify/formbody": "^8.0.2",
+    "@fastify/static": "^8.2.0",
+    "@fastify/view": "^11.1.0",
+    "cheerio": "^1.1.2",
+    "ejs": "^3.1.10",
+    "fastify": "^5.6.1",
+    "htmx.org": "^2.0.8",
+    "undici": "^7.16.0",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@types/ejs": "^3.1.5",
+    "@types/node": "^24.10.0",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}

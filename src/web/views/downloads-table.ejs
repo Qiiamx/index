@@ -1,0 +1,63 @@
+<h2 class="section-title">qBittorrent 任务（<%= torrents.length %>）</h2>
+<% if (qbError) { %>
+  <p class="error"><%= qbError %></p>
+<% } else if (torrents.length === 0) { %>
+  <p class="muted">qBittorrent 里还没有带 index 标签的任务。</p>
+<% } else { %>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>名称</th>
+          <th>状态</th>
+          <th>进度</th>
+          <th>速度</th>
+          <th>连接</th>
+          <th>大小</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+      <% torrents.forEach(function (torrent) { %>
+        <tr>
+          <td class="name-cell">
+            <div><%= torrent.name %></div>
+            <div class="muted small"><%= torrent.save_path %></div>
+          </td>
+          <td>
+            <div><%= qbStateLabel(torrent.state) %></div>
+            <div class="muted small"><%= torrent.eta > 0 ? '剩余 ' + formatEta(torrent.eta) : '' %></div>
+          </td>
+          <td class="progress-cell">
+            <div class="progress"><span style="width: <%= Math.min(100, Math.max(0, torrent.progress * 100)).toFixed(1) %>%"></span></div>
+            <div class="muted small"><%= (torrent.progress * 100).toFixed(1) %>%</div>
+          </td>
+          <td class="muted small">
+            ↓ <%= formatSpeed(torrent.dlspeed) %><br>
+            ↑ <%= formatSpeed(torrent.upspeed) %>
+          </td>
+          <td class="muted small">
+            <%= torrent.num_seeds %> seeds<br>
+            <%= torrent.num_leechs %> peers
+          </td>
+          <td class="muted small">
+            <%= formatSize(torrent.completed) %> / <%= formatSize(torrent.size) %>
+          </td>
+          <td class="row-actions wrap">
+            <form method="post" action="/downloads/torrents/<%= torrent.hash %>/stop">
+              <button class="link-button" type="submit">停止</button>
+            </form>
+            <form method="post" action="/downloads/torrents/<%= torrent.hash %>/start">
+              <button class="link-button" type="submit">开始</button>
+            </form>
+            <form method="post" action="/downloads/torrents/<%= torrent.hash %>/delete" onsubmit="return confirm('从 qBittorrent 删除这个任务？')">
+              <label class="checkbox small"><input type="checkbox" name="deleteFiles">删文件</label>
+              <button class="link-button danger-text" type="submit">删除</button>
+            </form>
+          </td>
+        </tr>
+      <% }) %>
+      </tbody>
+    </table>
+  </div>
+<% } %>

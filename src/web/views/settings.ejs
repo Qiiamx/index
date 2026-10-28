@@ -1,0 +1,79 @@
+<%- include('partials/head') %>
+
+<section class="page-head">
+  <div>
+    <h1>设置</h1>
+    <p class="muted">只绑定 127.0.0.1，不需要登录。qBittorrent 和播放器都在本机。</p>
+  </div>
+</section>
+
+<section class="card">
+  <h2 class="section-title">qBittorrent</h2>
+  <form method="post" action="/settings/test">
+    <p class="muted small">先保存下面的设置，再测试连接。</p>
+    <button class="button secondary" type="submit">测试当前连接</button>
+  </form>
+</section>
+
+<form class="card form" method="post" action="/settings">
+  <label>
+    <span>qBittorrent Web UI 地址</span>
+    <input type="url" name="qbUrl" value="<%= settings.qbUrl %>" placeholder="http://127.0.0.1:8080">
+  </label>
+  <div class="grid-2">
+    <label>
+      <span>用户名（无密码可留空）</span>
+      <input type="text" name="qbUsername" value="<%= settings.qbUsername %>">
+    </label>
+    <label>
+      <span>密码</span>
+      <input type="password" name="qbPassword" value="<%= settings.qbPassword %>">
+    </label>
+  </div>
+  <label>
+    <span>分类（可选）</span>
+    <input type="text" name="qbCategory" value="<%= settings.qbCategory %>" placeholder="Index">
+    <small class="muted">auto TMM 开启时不指定保存目录；分类不存在时会尝试创建。留空则只用默认保存目录。</small>
+  </label>
+
+  <h2 class="section-title">播放器</h2>
+  <label>
+    <span>播放器可执行文件</span>
+    <input type="text" name="playerPath" value="<%= settings.playerPath %>" placeholder="C:\\Program Files\\mpv\\mpv.exe">
+    <small class="muted">留空时使用 Windows 默认“打开方式”；路径必须指向本机 exe。</small>
+  </label>
+  <label>
+    <span>参数模板</span>
+    <input type="text" name="playerArgs" value="<%= settings.playerArgs %>" placeholder="{file}">
+    <small class="muted">用 <code>{file}</code> 代表文件或 URL；支持空格分隔的多个参数。</small>
+  </label>
+
+  <h2 class="section-title">RSS / 抓取</h2>
+  <label>
+    <span>抓取代理（可选）</span>
+    <input type="text" name="proxyUrl" value="<%= settings.proxyUrl %>" placeholder="http://127.0.0.1:10808">
+    <small class="muted">只用于 RSS 和 HTTP 目录抓取；BT 代理请在 qBittorrent 里配置。仅支持 http/https 代理。</small>
+  </label>
+  <div class="grid-2">
+    <label>
+      <span>RSS 轮询间隔（分钟）</span>
+      <input type="number" name="rssIntervalMinutes" min="1" value="<%= settings.rssIntervalMinutes %>">
+    </label>
+    <label class="checkbox align-end">
+      <input type="checkbox" name="autoDownload" <%= settings.autoDownload ? 'checked' : '' %>>
+      发现新条目后自动提交到 qBittorrent
+    </label>
+  </div>
+
+  <div class="form-actions">
+    <button class="button" type="submit">保存设置</button>
+  </div>
+</form>
+
+<section class="card">
+  <h2 class="section-title">说明</h2>
+  <p class="muted small">保存目录、做种倍率/时长、Tracker、DHT、BT 代理都在 qBittorrent 里管理。程序只负责提交任务和读取已完成的文件。</p>
+  <p class="muted small">播放器只负责打开文件；程序记录“全局/文件夹上次观看”，文件内进度由播放器自己保存。</p>
+</section>
+
+<%- include('partials/foot') %>

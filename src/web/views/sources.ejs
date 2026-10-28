@@ -1,0 +1,52 @@
+<%- include('partials/head') %>
+
+<section class="page-head">
+  <div>
+    <h1>源</h1>
+    <p class="muted">HTTP 目录源在线播放；RSS 源生成任务并交给 qBittorrent。</p>
+  </div>
+  <div class="row-actions">
+    <a class="button" href="/sources/new?type=HTTP_DIRECTORY">添加 HTTP 目录</a>
+    <a class="button secondary" href="/sources/new?type=RSS">添加 RSS</a>
+  </div>
+</section>
+
+<section class="card">
+  <% if (sources.length === 0) { %>
+    <p class="muted">还没有片源。先添加一个 HTTP 目录或 RSS 订阅，再为它配置规则。</p>
+  <% } %>
+  <% sources.forEach(function (source) { %>
+    <div class="source-row">
+      <div class="source-main">
+        <div class="source-title">
+          <span class="type-badge"><%= source.type === 'RSS' ? 'RSS' : 'HTTP' %></span>
+          <%= source.name %>
+          <span class="<%= source.enabled ? 'status-on' : 'status-off' %>"><%= source.enabled ? '启用' : '停用' %></span>
+        </div>
+        <div class="muted small"><%= source.baseUrl %></div>
+        <div class="muted small">
+          <% if (source.lastFetchedAt) { %>上次拉取：<%= new Date(source.lastFetchedAt).toLocaleString() %><% } else { %>尚未拉取<% } %>
+          <% if ((pendingBySource.get(source.id) || 0) > 0) { %> · 待下载 <%= pendingBySource.get(source.id) %> 个<% } %>
+        </div>
+        <% if (source.lastError) { %><div class="error small"><%= source.lastError %></div><% } %>
+      </div>
+      <div class="row-actions wrap">
+        <a class="link" href="/sources/<%= source.id %>/rules">规则</a>
+        <a class="link" href="/sources/<%= source.id %>/edit">编辑</a>
+        <% if (source.type === 'RSS') { %>
+          <form method="post" action="/sources/<%= source.id %>/refresh">
+            <button class="link-button" type="submit">立即刷新</button>
+          </form>
+        <% } %>
+        <form method="post" action="/sources/<%= source.id %>/toggle">
+          <button class="link-button" type="submit"><%= source.enabled ? '停用' : '启用' %></button>
+        </form>
+        <form method="post" action="/sources/<%= source.id %>/delete" onsubmit="return confirm('删除片源及其规则/任务？本地文件不会删除。')">
+          <button class="link-button danger-text" type="submit">删除</button>
+        </form>
+      </div>
+    </div>
+  <% }) %>
+</section>
+
+<%- include('partials/foot') %>

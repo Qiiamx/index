@@ -1,0 +1,52 @@
+<%- include('partials/head') %>
+
+<section class="page-head">
+  <h1><%= mode === 'create' ? '新建片源' : '编辑片源' %></h1>
+  <a class="link" href="/sources">返回源</a>
+</section>
+
+<form class="card form" method="post" action="<%= mode === 'create' ? '/sources' : '/sources/' + source.id %>">
+  <label>
+    <span>名称</span>
+    <input type="text" name="name" required value="<%= source ? source.name : '' %>">
+  </label>
+
+  <label>
+    <span>类型</span>
+    <% if (mode === 'create') { %>
+      <select name="type">
+        <option value="HTTP_DIRECTORY" <%= (typeof presetType !== 'undefined' ? presetType : 'HTTP_DIRECTORY') === 'HTTP_DIRECTORY' ? 'selected' : '' %>>HTTP 目录</option>
+        <option value="RSS" <%= (typeof presetType !== 'undefined' ? presetType : '') === 'RSS' ? 'selected' : '' %>>RSS 订阅</option>
+      </select>
+    <% } else { %>
+      <input type="text" disabled value="<%= source.type === 'RSS' ? 'RSS 订阅' : 'HTTP 目录' %>">
+      <input type="hidden" name="type" value="<%= source.type %>">
+      <p class="muted small">类型创建后不可修改。</p>
+    <% } %>
+  </label>
+
+  <label>
+    <span>地址</span>
+    <input type="url" name="baseUrl" required value="<%= source ? source.baseUrl : '' %>" placeholder="http://host:8000/media/">
+  </label>
+
+  <label>
+    <span>种子链接正则（仅 RSS，可选）</span>
+    <input type="text" name="torrentLinkRegex" value="<%= source && source.torrentLinkRegex ? source.torrentLinkRegex : '' %>" placeholder="download=(\S+)">
+    <small class="muted">内置逻辑会优先读取 enclosure 和描述里的 magnet/.torrent；这个正则是额外的兜底。</small>
+  </label>
+
+  <% if (mode === 'edit') { %>
+    <label class="checkbox">
+      <input type="checkbox" name="enabled" <%= source.enabled ? 'checked' : '' %>>
+      启用
+    </label>
+  <% } %>
+
+  <div class="form-actions">
+    <button class="button" type="submit">保存</button>
+    <a class="button secondary" href="/sources">取消</a>
+  </div>
+</form>
+
+<%- include('partials/foot') %>

@@ -1,0 +1,38 @@
+<%- include('partials/head') %>
+
+<section class="page-head">
+  <div>
+    <h1>标签</h1>
+    <p class="muted">标签按分组展示，用来自定义追番筛选。</p>
+  </div>
+  <a class="link" href="/library">返回追番</a>
+</section>
+
+<section class="card">
+  <h2 class="section-title">新增标签</h2>
+  <form class="inline-form" method="post" action="/tags">
+    <input type="text" name="groupName" placeholder="分组（可选）">
+    <input type="text" name="name" placeholder="标签名" required>
+    <button class="button" type="submit">添加</button>
+  </form>
+</section>
+
+<section class="card">
+  <% if (tags.length === 0) { %>
+    <p class="muted">还没有标签。</p>
+  <% } %>
+  <% tags.forEach(function (tag) { %>
+    <div class="tag-row">
+      <form class="inline-form grow" method="post" action="/tags/<%= tag.id %>">
+        <input type="text" name="groupName" value="<%= tag.groupName %>" placeholder="分组">
+        <input type="text" name="name" value="<%= tag.name %>" required>
+        <button class="button secondary" type="submit">保存</button>
+      </form>
+      <form method="post" action="/tags/<%= tag.id %>/delete" onsubmit="return confirm('删除标签？文件夹上的关联也会移除。')">
+        <button class="button danger" type="submit">删除</button>
+      </form>
+    </div>
+  <% }) %>
+</section>
+
+<%- include('partials/foot') %>

@@ -1,0 +1,66 @@
+<%- include('partials/head') %>
+
+<section class="page-head">
+  <div>
+    <h1>下载</h1>
+    <p class="muted">BT 由 qBittorrent 管理；这里只负责提交、查看和删除。</p>
+  </div>
+  <div class="row-actions">
+    <form method="post" action="/downloads/start-pending">
+      <button class="button" type="submit">开始待下载</button>
+    </form>
+    <form method="post" action="/downloads/reindex">
+      <button class="button secondary" type="submit">重新索引</button>
+    </form>
+  </div>
+</section>
+
+<section class="card">
+  <div class="row-between">
+    <div>
+      <strong>qBittorrent</strong>
+      <% if (qbError) { %>
+        <span class="status-off">未连接</span>
+      <% } else { %>
+        <span class="status-on">已连接</span>
+      <% } %>
+    </div>
+    <span class="muted small"><%= apiVersion ? 'Web API ' + apiVersion : '' %></span>
+  </div>
+  <% if (qbError) { %><p class="error small"><%= qbError %></p><% } %>
+  <p class="muted small">连接地址、账号和分类在“设置”里配置。auto TMM 和保存目录由 qBittorrent 决定。</p>
+</section>
+
+<section class="card">
+  <h2 class="section-title">待下载 / 失败任务（<%= pending.length %>）</h2>
+  <% if (pending.length === 0) { %>
+    <p class="muted">没有待处理任务。RSS 轮询新条目后会出现在这里。</p>
+  <% } %>
+  <% pending.forEach(function (task) { %>
+    <div class="task-row">
+      <div class="task-main">
+        <div class="item-title"><%= task.title %></div>
+        <div class="muted small">
+          <%= stateLabel(task.state) %>
+          <% if (task.completedAt) { %> · <%= new Date(task.completedAt).toLocaleString() %><% } %>
+        </div>
+        <% if (task.error) { %><div class="error small"><%= task.error %></div><% } %>
+        <div class="muted small break"><%= task.torrentUrl %></div>
+      </div>
+      <div class="row-actions wrap">
+        <form method="post" action="/downloads/tasks/<%= task.id %>/retry">
+          <button class="button secondary" type="submit"><%= task.state === 'FAILED' ? '重试' : '提交' %></button>
+        </form>
+        <form method="post" action="/downloads/tasks/<%= task.id %>/delete" onsubmit="return confirm('删除这个任务记录？')">
+          <button class="button danger" type="submit">删除</button>
+        </form>
+      </div>
+    </div>
+  <% }) %>
+</section>
+
+<section class="card" id="downloads-table" hx-get="/downloads/table" hx-trigger="every 5s" hx-swap="innerHTML">
+  <%- include('downloads-table') %>
+</section>
+
+<%- include('partials/foot') %>

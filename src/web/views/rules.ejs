@@ -1,0 +1,47 @@
+<%- include('partials/head') %>
+
+<nav class="breadcrumb">
+  <a href="/sources">源</a><span>/</span><span><%= source.name %></span><span>/</span><span>规则</span>
+</nav>
+
+<section class="page-head">
+  <div>
+    <h1><%= source.name %> · 规则</h1>
+    <p class="muted">多级目录规则按顺序匹配；最后一个正则匹配最终文件，改名只作用于最后一层。</p>
+  </div>
+  <a class="button" href="/sources/<%= source.id %>/rules/new">新建规则</a>
+</section>
+
+<section class="card">
+  <% if (rules.length === 0) { %>
+    <p class="muted">还没有规则。规则决定文件进入哪个逻辑文件夹，以及显示名怎么改写。</p>
+  <% } %>
+  <% rules.forEach(function (rule) { %>
+    <div class="rule-row">
+      <div class="rule-main">
+        <div class="rule-title">
+          #<%= rule.orderNo %>
+          <% var target = flatFolders.find(function (entry) { return entry.folder.id === rule.targetFolderId; }); %>
+          目标：<strong><%= target ? target.folder.name : '未分配' %></strong>
+          <span class="<%= rule.enabled ? 'status-on' : 'status-off' %>"><%= rule.enabled ? '启用' : '停用' %></span>
+        </div>
+        <div class="muted small">目录：<%= rule.folderRegexes.length ? rule.folderRegexes.join(' / ') : '（无，直接匹配文件名）' %></div>
+        <div class="muted small">文件：<code><%= rule.matchRegex %></code></div>
+        <% if (rule.displayNameRegex) { %>
+          <div class="muted small">改名：<code><%= rule.displayNameRegex %></code> → <code><%= rule.displayNameReplacement || '' %></code></div>
+        <% } %>
+      </div>
+      <div class="row-actions wrap">
+        <a class="link" href="/rules/<%= rule.id %>/edit">编辑</a>
+        <form method="post" action="/rules/<%= rule.id %>/toggle">
+          <button class="link-button" type="submit"><%= rule.enabled ? '停用' : '启用' %></button>
+        </form>
+        <form method="post" action="/rules/<%= rule.id %>/delete" onsubmit="return confirm('删除这条规则？')">
+          <button class="link-button danger-text" type="submit">删除</button>
+        </form>
+      </div>
+    </div>
+  <% }) %>
+</section>
+
+<%- include('partials/foot') %>

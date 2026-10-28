@@ -1,0 +1,111 @@
+<%- include('partials/head') %>
+
+<nav class="breadcrumb">
+  <a href="/library">追番</a>
+  <% breadcrumb.forEach(function (item, index) { %>
+    <span>/</span>
+    <% if (index === breadcrumb.length - 1) { %>
+      <span><%= item.name %></span>
+    <% } else { %>
+      <a href="/folders/<%= item.id %>"><%= item.name %></a>
+    <% } %>
+  <% }) %>
+</nav>
+
+<section class="page-head">
+  <div>
+    <h1><%= folder.name %></h1>
+    <div class="tag-line">
+      <% folderTags.forEach(function (tag) { %>
+        <span class="tag"><%= tag.groupName ? tag.groupName + ' / ' : '' %><%= tag.name %></span>
+      <% }) %>
+    </div>
+  </div>
+  <div class="row-actions">
+    <a class="button secondary" href="/folders/<%= folder.id %>/edit">编辑</a>
+    <% if (folder.id !== 'folder-unassigned') { %>
+      <form method="post" action="/folders/<%= folder.id %>/delete" onsubmit="return confirm('删除这个逻辑文件夹？本地文件不会删除。')">
+        <button class="button danger" type="submit">删除</button>
+      </form>
+    <% } %>
+  </div>
+</section>
+
+<% if (last) { %>
+<section class="card continue-card">
+  <div>
+    <div class="eyebrow">本文件夹上次观看</div>
+    <h2><%= last.title %></h2>
+    <p class="muted"><%= new Date(last.playedAt).toLocaleString() %></p>
+  </div>
+  <form method="post" action="/play">
+    <input type="hidden" name="folderId" value="<%= folder.id %>">
+    <input type="hidden" name="itemKey" value="<%= last.itemKey %>">
+    <input type="hidden" name="title" value="<%= last.title %>">
+    <input type="hidden" name="target" value="<%= last.target %>">
+    <input type="hidden" name="returnTo" value="/folders/<%= folder.id %>">
+    <button class="button" type="submit">继续播放</button>
+  </form>
+</section>
+<% } %>
+
+<% if (childFolders.length > 0) { %>
+<section class="card">
+  <h2 class="section-title">子文件夹</h2>
+  <div class="chip-row">
+    <% childFolders.forEach(function (child) { %>
+      <a class="chip" href="/folders/<%= child.id %>"><%= child.name %></a>
+    <% }) %>
+  </div>
+</section>
+<% } %>
+
+<% if (httpErrors.length > 0) { %>
+<section class="card warning">
+  <strong>部分在线片源读取失败</strong>
+  <% httpErrors.forEach(function (item) { %><p class="muted"><%= item %></p><% }) %>
+</section>
+<% } %>
+
+<section class="card">
+  <h2 class="section-title">条目</h2>
+  <% if (btItems.length === 0 && httpItems.length === 0) { %>
+    <p class="muted">这里还没有可播放的条目。BT 任务完成并索引后会出现；HTTP 目录源由规则实时读取。</p>
+  <% } %>
+  <div class="item-list">
+    <% btItems.forEach(function (item) { %>
+      <div class="item-row">
+        <div class="item-main">
+          <div class="item-title"><%= item.title %></div>
+          <div class="muted small"><%= item.relPath %> · <%= formatSize(item.size) %> · BT</div>
+        </div>
+        <form method="post" action="/play">
+          <input type="hidden" name="folderId" value="<%= folder.id %>">
+          <input type="hidden" name="itemKey" value="<%= item.relPath %>">
+          <input type="hidden" name="title" value="<%= item.title %>">
+          <input type="hidden" name="target" value="<%= item.absPath %>">
+          <input type="hidden" name="returnTo" value="/folders/<%= folder.id %>">
+          <button class="button" type="submit">播放</button>
+        </form>
+      </div>
+    <% }) %>
+    <% httpItems.forEach(function (item) { %>
+      <div class="item-row">
+        <div class="item-main">
+          <div class="item-title"><%= item.title %></div>
+          <div class="muted small"><%= item.sourceName %> · 在线</div>
+        </div>
+        <form method="post" action="/play">
+          <input type="hidden" name="folderId" value="<%= folder.id %>">
+          <input type="hidden" name="itemKey" value="<%= item.itemKey %>">
+          <input type="hidden" name="title" value="<%= item.title %>">
+          <input type="hidden" name="target" value="<%= item.target %>">
+          <input type="hidden" name="returnTo" value="/folders/<%= folder.id %>">
+          <button class="button" type="submit">播放</button>
+        </form>
+      </div>
+    <% }) %>
+  </div>
+</section>
+
+<%- include('partials/foot') %>

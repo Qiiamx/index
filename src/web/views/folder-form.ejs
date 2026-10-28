@@ -1,0 +1,57 @@
+<%- include('partials/head') %>
+
+<section class="page-head">
+  <h1><%= mode === 'create' ? '新建文件夹' : '编辑文件夹' %></h1>
+  <a class="link" href="/library">返回追番</a>
+</section>
+
+<form class="card form" method="post" action="<%= mode === 'create' ? '/folders' : '/folders/' + folder.id %>">
+  <label>
+    <span>名称</span>
+    <input type="text" name="name" required value="<%= folder ? folder.name : '' %>">
+  </label>
+
+  <label>
+    <span>上级文件夹</span>
+    <select name="parentId">
+      <option value="">（根目录）</option>
+      <% flatFolders.forEach(function (entry) { var item = entry.folder; if (folder && item.id === folder.id) return; %>
+        <% var selectedParent = folder ? folder.parentId : (typeof parentId !== 'undefined' ? parentId : ''); %>
+        <option value="<%= item.id %>" <%= selectedParent === item.id ? 'selected' : '' %>>
+          <%= '　'.repeat(entry.depth) + item.name %>
+        </option>
+      <% }) %>
+    </select>
+  </label>
+
+  <label>
+    <span>排序</span>
+    <input type="number" name="sort" value="<%= folder ? folder.sort : 0 %>">
+  </label>
+
+  <fieldset>
+    <legend>标签</legend>
+    <% if (tags.length === 0) { %><p class="muted">还没有标签，可以在“追番 → 管理标签”里添加。</p><% } %>
+    <div class="checkbox-grid">
+      <% tags.forEach(function (tag) { %>
+        <label class="checkbox">
+          <input type="checkbox" name="tags" value="<%= tag.id %>" <%= selectedTagIds.includes(tag.id) ? 'checked' : '' %>>
+          <%= tag.groupName ? tag.groupName + ' / ' : '' %><%= tag.name %>
+        </label>
+      <% }) %>
+    </div>
+  </fieldset>
+
+  <div class="form-actions">
+    <button class="button" type="submit">保存</button>
+    <a class="button secondary" href="<%= folder ? '/folders/' + folder.id : '/library' %>">取消</a>
+  </div>
+</form>
+
+<% if (mode === 'edit' && folder.id !== 'folder-unassigned') { %>
+<form class="card form" method="post" action="/folders/<%= folder.id %>/delete" onsubmit="return confirm('删除这个逻辑文件夹？本地文件不会删除。')">
+  <button class="button danger" type="submit">删除文件夹</button>
+</form>
+<% } %>
+
+<%- include('partials/foot') %>

@@ -1,0 +1,65 @@
+<%- include('partials/head') %>
+
+<nav class="breadcrumb">
+  <a href="/sources">源</a><span>/</span>
+  <a href="/sources/<%= source.id %>/rules"><%= source.name %></a><span>/</span>
+  <span><%= mode === 'create' ? '新建规则' : '编辑规则' %></span>
+</nav>
+
+<section class="page-head">
+  <h1><%= mode === 'create' ? '新建规则' : '编辑规则' %></h1>
+  <a class="link" href="/sources/<%= source.id %>/rules">返回规则</a>
+</section>
+
+<form class="card form" method="post" action="<%= mode === 'create' ? '/sources/' + source.id + '/rules' : '/rules/' + rule.id %>">
+  <label>
+    <span>目标文件夹</span>
+    <select name="targetFolderId">
+      <option value="">未分类</option>
+      <% flatFolders.forEach(function (entry) { var item = entry.folder; %>
+        <option value="<%= item.id %>" <%= rule && rule.targetFolderId === item.id ? 'selected' : '' %>>
+          <%= '　'.repeat(entry.depth) + item.name %>
+        </option>
+      <% }) %>
+    </select>
+  </label>
+
+  <label>
+    <span>目录层级（一行一级，最后一行是文件）</span>
+    <textarea name="folderRegexes" rows="4" placeholder="Show S01&#10;1080p"><%= rule ? rule.folderRegexes.join('\n') : '' %></textarea>
+    <small class="muted">目录用正则匹配，从片源根目录开始；留空表示只在根目录匹配文件。</small>
+  </label>
+
+  <label>
+    <span>最终文件正则</span>
+    <input type="text" name="matchRegex" required value="<%= rule ? rule.matchRegex : '' %>" placeholder=".*\\.(mkv|mp4)$">
+  </label>
+
+  <div class="grid-2">
+    <label>
+      <span>显示名正则（可选）</span>
+      <input type="text" name="displayNameRegex" value="<%= rule && rule.displayNameRegex ? rule.displayNameRegex : '' %>" placeholder="^(.*)\\.mkv$">
+    </label>
+    <label>
+      <span>替换为</span>
+      <input type="text" name="displayNameReplacement" value="<%= rule && rule.displayNameReplacement ? rule.displayNameReplacement : '' %>" placeholder="$1">
+    </label>
+  </div>
+
+  <label>
+    <span>顺序</span>
+    <input type="number" name="orderNo" value="<%= rule ? rule.orderNo : 0 %>">
+  </label>
+
+  <label class="checkbox">
+    <input type="checkbox" name="enabled" <%= !rule || rule.enabled ? 'checked' : '' %>>
+    启用这条规则
+  </label>
+
+  <div class="form-actions">
+    <button class="button" type="submit">保存</button>
+    <a class="button secondary" href="/sources/<%= source.id %>/rules">取消</a>
+  </div>
+</form>
+
+<%- include('partials/foot') %>

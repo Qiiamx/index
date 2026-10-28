@@ -1,0 +1,59 @@
+<%- include('partials/head') %>
+
+<section class="page-head">
+  <div>
+    <h1>追番</h1>
+    <p class="muted">逻辑文件夹只存在于数据库里；BT 文件由 qBittorrent 管理。</p>
+  </div>
+  <a class="button" href="/folders/new">新建文件夹</a>
+</section>
+
+<% if (last) { %>
+<section class="card continue-card">
+  <div>
+    <div class="eyebrow">上次观看</div>
+    <h2><%= last.title %></h2>
+    <p class="muted"><%= new Date(last.playedAt).toLocaleString() %></p>
+  </div>
+  <form method="post" action="/play">
+    <input type="hidden" name="folderId" value="<%= last.folderId %>">
+    <input type="hidden" name="itemKey" value="<%= last.itemKey %>">
+    <input type="hidden" name="title" value="<%= last.title %>">
+    <input type="hidden" name="target" value="<%= last.target %>">
+    <input type="hidden" name="returnTo" value="/library">
+    <button class="button" type="submit">继续播放</button>
+  </form>
+</section>
+<% } %>
+
+<section class="filters">
+  <a class="chip <%= selectedTag ? '' : 'selected' %>" href="/library">全部</a>
+  <% tags.forEach(function (tag) { %>
+    <a class="chip <%= selectedTag === tag.id ? 'selected' : '' %>" href="/library?tag=<%= encodeURIComponent(tag.id) %>">
+      <%= tag.groupName ? tag.groupName + ' / ' : '' %><%= tag.name %>
+    </a>
+  <% }) %>
+  <a class="chip ghost" href="/tags">管理标签</a>
+</section>
+
+<section class="card folder-list">
+  <% if (flatFolders.length === 0) { %>
+    <p class="muted">还没有文件夹，先新建一个，再到“源”里添加片源和规则。</p>
+  <% } %>
+  <% flatFolders.forEach(function (entry) { var folder = entry.folder; var folderTagList = folderTags.get(folder.id) || []; %>
+    <div class="folder-row" style="padding-left: <%= entry.depth * 20 %>px">
+      <div class="folder-main">
+        <a class="folder-name" href="/folders/<%= folder.id %>"><%= folder.name %></a>
+        <span class="muted small"><%= counts.get(folder.id) || 0 %> 个本地条目</span>
+        <% folderTagList.forEach(function (tag) { %>
+          <span class="tag"><%= tag.groupName ? tag.groupName + ' / ' : '' %><%= tag.name %></span>
+        <% }) %>
+      </div>
+      <div class="row-actions">
+        <a class="link" href="/folders/<%= folder.id %>/edit">编辑</a>
+      </div>
+    </div>
+  <% }) %>
+</section>
+
+<%- include('partials/foot') %>

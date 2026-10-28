@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= title %> · Index</title>
+  <link rel="stylesheet" href="/assets/app.css">
+  <script src="/vendor/htmx.js" defer></script>
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="/library">Index</a>
+  <nav class="tabs">
+    <a class="<%= active === 'library' ? 'active' : '' %>" href="/library">追番</a>
+    <a class="<%= active === 'sources' ? 'active' : '' %>" href="/sources">源</a>
+    <a class="<%= active === 'downloads' ? 'active' : '' %>" href="/downloads">下载</a>
+    <a class="<%= active === 'settings' ? 'active' : '' %>" href="/settings">设置</a>
+  </nav>
+</header>
+<main class="page">
+<% if (locals.notice) { %><div class="notice"><%= locals.notice %></div><% } %>
+<% if (locals.error) { %><div class="error"><%= locals.error %></div><% } %>
