@@ -6,7 +6,7 @@
 </section>
 
 <form class="card form" method="post" action="<%= mode === 'create' ? '/folders' : '/folders/' + folder.id %>">
-  <%- include('partials/folder-fields', { showTagCreate: true }) %>
+  <%- include('partials/folder-fields', { showTagCreate: true, showParentCreate: true }) %>
   <div class="form-actions">
     <button class="button" type="submit">保存</button>
     <a class="button secondary" href="<%= folder ? '/folders/' + folder.id : '/library' %>">取消</a>

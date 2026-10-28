@@ -20,7 +20,18 @@
 </label>
 
 <label>
-  <span>上级文件夹</span>
+  <div class="field-head">
+    <span>上级文件夹</span>
+    <% if (typeof showParentCreate !== 'undefined' && showParentCreate) { %>
+      <button type="button" class="button secondary small-button"
+              hx-get="/quick/folder"
+              hx-target="#quick-dialog-body"
+              hx-swap="innerHTML"
+              hx-on::after-request="document.getElementById('quick-dialog').showModal()">
+        新建上级
+      </button>
+    <% } %>
+  </div>
   <select name="parentId">
     <option value="">（根目录）</option>
     <% flatFolders.forEach(function (entry) { var item = entry.folder; %>
