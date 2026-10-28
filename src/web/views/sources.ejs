@@ -26,7 +26,7 @@
         </div>
         <div class="muted small"><%= source.baseUrl %></div>
         <div class="muted small">
-          <% if (source.lastFetchedAt) { %>上次拉取：<%= new Date(source.lastFetchedAt).toLocaleString() %><% } else { %>尚未拉取<% } %>
+          <% if (source.type === 'LOCAL_DIRECTORY') { %>本地目录，打开文件夹时实时扫描<% } else if (source.lastFetchedAt) { %>上次拉取：<%= new Date(source.lastFetchedAt).toLocaleString() %><% } else { %>尚未拉取<% } %>
           <% if ((pendingBySource.get(source.id) || 0) > 0) { %> · 待下载 <%= pendingBySource.get(source.id) %> 个<% } %>
         </div>
         <% if (source.lastError) { %><div class="error small"><%= source.lastError %></div><% } %>
