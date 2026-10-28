@@ -7,7 +7,9 @@
 
 - 2026-10-28 仓库已从 Android 版清零重建；旧历史不再保留。
 - 当前是 **PC 本地网页服务**：Node 24 + Fastify + EJS/HTMX + SQLite。
+- 源类型：HTTP 目录、RSS、本地目录（`LOCAL_DIRECTORY`，只读扫描）。
 - BT 交给 qBittorrent Web API；播放交给本机播放器；只索引已完成文件。
+- 没有系统“未分类”文件夹；未匹配规则的文件直接跳过。
 - 仅绑定 `127.0.0.1`，默认端口 8090，无登录。
 - 日常入口是根目录 `Index.vbs`：右下角托盘，Node 服务隐藏运行，不弹命令行。
 - 服务不做 Windows 服务（session 0 无法把播放器开在桌面）。
@@ -41,12 +43,16 @@ src/server.ts                 启动入口
 src/app.ts                    Fastify 注册、页面路由、表单动作
 src/config.ts                 config.json / PORT / DATA_DIR
 src/db/schema.ts              SQLite 建表
-src/db/database.ts            打开 DB、seed 未分类文件夹
+src/db/database.ts            打开 DB、迁移（sources 类型、清理旧未分类）
 src/db/repositories.ts        所有仓储 + SettingsService
 src/domain/models.ts          领域类型
 src/domain/rules.ts           规则编译/校验/多级目录解析
 src/sources/httpDirectory.ts  HTTP 目录解析
+src/sources/localDirectory.ts 本地目录扫描（根目录内、跳过符号链接）
 src/sources/rss.ts            RSS/Atom 解析
+src/web/public/app.js         弹窗/级联插入/原生目录选择
+src/web/views/quick-*.ejs     复用表单的快捷创建弹窗
+tools/pick-folder.ps1         Windows 原生选文件夹对话框
 src/util/http.ts              undici + 可选 http 代理
 src/qbittorrent/client.ts     qBittorrent Web API 5.x/旧版适配
 src/qbittorrent/indexer.ts    已完成任务 -> items 索引
@@ -83,9 +89,12 @@ watch_history(id,folder_id,item_key,title,target,played_at)
 settings(key,value)  -- key='app' 存 JSON
 ```
 
-- 固定文件夹：`folder-unassigned`（未分类），不可删除。
-- 删除文件夹只删数据库和关联 items，**不删物理文件**。
-- 删除源会级联规则/任务/items，不删物理文件。
+- 没有系统“未分类”文件夹；未匹配规则的文件不进入库。
+- `LOCAL_DIRECTORY` 的 `base_url` 存本地绝对路径；只读扫描，不复制文件。
+- 删除文件夹：递归子文件夹、`folder_tags`、`items`、观看记录；目标在子树内的规则置空并禁用；不删物理文件。
+- 删除源：级联规则/任务/items；**不动 qBittorrent 任务和文件**。
+- 删除标签：只删 `folder_tags` 关联，不删文件夹/文件。
+- 迁移版本用 `PRAGMA user_version = 1`；`sources` 不再有类型 CHECK。
 - 设置默认值在 `DEFAULT_SETTINGS`；qB 密码以明文存本机 SQLite。
 
 ## 5. qBittorrent 约定
@@ -99,14 +108,18 @@ settings(key,value)  -- key='app' 存 JSON
 - 保存目录、分类路径、做种限制、Tracker、DHT、BT 代理全部在 qBittorrent 侧配置。
 - 完成后用 `save_path + files[].name` 求绝对路径；`files[].name` 是相对路径，可能含根目录。
 - 只索引视频扩展名且 `files[].progress >= 0.999`；只播已完成文件。
+- 没有规则匹配的文件直接跳过；任务 0 条目时下载页提示“未匹配规则”。
 
 ## 6. 规则
 
 - `folderRegexes` 是目录层级，从片源根目录开始；`matchRegex` 是最终文件。
 - 有目录规则时必须**层数完全一致**；没有目录规则时只匹配叶子文件名，可在任意深度。
 - 改名只作用叶子；结果不能含 `/`、`\`、`..`。
-- 规则按 `orderNo` 排序，第一条匹配生效；未匹配的 BT 文件进“未分类”。
-- HTTP 目录在页面请求时实时递归读取（缓存单次请求），BT 文件在任务完成后写入 `items`。
+- 规则必须有 `target_folder_id`；没有目标不能保存，孤儿规则禁用并提示“目标已删除”。
+- 规则按 `orderNo` 排序，第一条匹配生效；未匹配文件直接跳过，没有未分类兜底。
+- HTTP 目录和本地目录都在页面请求时实时递归读取（缓存单次请求），BT 文件在任务完成后写入 `items`。
+- 本地目录扫描限制在源根目录内、跳过符号链接；`..` 越界直接拒绝。
+- 快捷创建复用表单弹窗：文件夹表单可新建标签，规则表单可新建文件夹（名称用 `/` 可级联创建父子）。
 
 ## 7. 播放
 
@@ -146,6 +159,10 @@ settings(key,value)  -- key='app' 存 JSON
 14. `Index.vbs` 保持 ASCII；它需要被 wscript 按 ANSI 读取。托盘输出重定向到 `tray-console.log`，避免从 shell 启动时继承调用方 stdout 导致命令不返回。
 15. 测试托盘不要用 `Start-Process -Wait` 等 `Index.vbs`/`wscript`：PowerShell 可能等待整棵进程树。直接启动后用进程/健康检查验证。
 16. 托盘 PowerShell 的 `Add-Type -AssemblyName System.Windows.Forms` 在隐藏窗口下正常；但 `NotifyIcon` 必须在 `Application.Run()` 之后才有消息循环，启动期间的 balloon 可能延迟显示。
+17. `HX-Trigger` 响应头只能是 ISO-8859-1；中文标签/文件夹名必须用 `asciiJson()` 转成 `\uXXXX`，否则 Node 会报 `Invalid character in header content` 并 500。
+18. `sources.type` 不能恢复旧 CHECK；新增类型只改 `SourceType` 和迁移，不要只改 schema，已有库不会自动重建。
+19. 文件夹名不能含 `/` 或 `\`；快捷创建弹窗把 `/` 当父子路径分隔符。
+20. 原生目录选择器由服务端进程弹出，只在服务与浏览器同一台 PC 时有意义；不要把它当成远程客户端的选择器。
 
 ## 10. 后续待办
 

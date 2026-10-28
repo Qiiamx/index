@@ -78,6 +78,7 @@ beforeAll(async () => {
       response.setHeader('content-type', 'application/json');
       response.end(JSON.stringify([
         { name: 'Season 1/Show.S01E01.mkv', size: 123, progress: 1, priority: 1, is_seed: true },
+        { name: 'Season 1/Unmatched.mp4', size: 50, progress: 1, priority: 1, is_seed: true },
         { name: 'Season 1/readme.txt', size: 10, progress: 1, priority: 1, is_seed: true },
       ]));
       return;

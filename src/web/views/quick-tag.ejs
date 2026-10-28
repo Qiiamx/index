@@ -1,0 +1,20 @@
+<form class="form quick-form"
+      hx-post="<%= action %>"
+      hx-target="this"
+      hx-swap="outerHTML">
+  <h2>新建标签</h2>
+  <% if (error) { %><div class="error"><%= error %></div><% } %>
+  <label>
+    <span>标签名</span>
+    <input type="text" name="name" required value="<%= formName %>">
+  </label>
+  <label>
+    <span>分组（可选）</span>
+    <input type="text" name="groupName" value="<%= formGroup %>" placeholder="例如：季度">
+  </label>
+  <div class="form-actions">
+    <button class="button" type="submit">创建</button>
+    <button class="button secondary" type="button"
+            onclick="document.getElementById('quick-dialog').close()">取消</button>
+  </div>
+</form>

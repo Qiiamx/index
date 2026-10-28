@@ -23,11 +23,9 @@
   </div>
   <div class="row-actions">
     <a class="button secondary" href="/folders/<%= folder.id %>/edit">编辑</a>
-    <% if (folder.id !== 'folder-unassigned') { %>
-      <form method="post" action="/folders/<%= folder.id %>/delete" onsubmit="return confirm('删除这个逻辑文件夹？本地文件不会删除。')">
-        <button class="button danger" type="submit">删除</button>
-      </form>
-    <% } %>
+    <form method="post" action="/folders/<%= folder.id %>/delete" onsubmit="return confirm('删除这个文件夹及其子文件夹？逻辑条目会删除，本地文件不会删除；指向这些文件夹的规则会被禁用。')">
+      <button class="button danger" type="submit">删除</button>
+    </form>
   </div>
 </section>
 
@@ -62,7 +60,7 @@
 
 <% if (httpErrors.length > 0) { %>
 <section class="card warning">
-  <strong>部分在线片源读取失败</strong>
+  <strong>部分片源读取失败</strong>
   <% httpErrors.forEach(function (item) { %><p class="muted"><%= item %></p><% }) %>
 </section>
 <% } %>
@@ -93,7 +91,7 @@
       <div class="item-row">
         <div class="item-main">
           <div class="item-title"><%= item.title %></div>
-          <div class="muted small"><%= item.sourceName %> · 在线</div>
+          <div class="muted small"><%= item.sourceName %> · <%= item.kind === 'local' ? '本地' : '在线' %></div>
         </div>
         <form method="post" action="/play">
           <input type="hidden" name="folderId" value="<%= folder.id %>">

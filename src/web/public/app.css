@@ -272,6 +272,33 @@ th { color: var(--muted); font-size: 12px; font-weight: 600; }
 }
 .inline-form.grow input { flex: 1; }
 
+.field-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.small-button { padding: 4px 9px; font-size: 12px; }
+.input-with-button { display: flex; gap: 8px; align-items: center; }
+.input-with-button input { flex: 1; }
+.input-with-button .button { white-space: nowrap; }
+
+.dialog {
+  border: 0;
+  border-radius: 16px;
+  padding: 0;
+  width: min(560px, calc(100vw - 28px));
+  max-height: calc(100vh - 40px);
+  overflow: auto;
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
+}
+.dialog::backdrop { background: rgba(13, 17, 23, 0.45); }
+.dialog .quick-form { padding: 18px; gap: 12px; }
+.dialog .quick-form h2 { margin: 0 0 4px; font-size: 18px; }
+
 .footer { text-align: center; color: var(--muted); font-size: 12px; padding: 24px 16px 32px; }
 
 @media (max-width: 720px) {

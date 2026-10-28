@@ -19,6 +19,15 @@ function bool(value: unknown): boolean {
   return value === 1 || value === true;
 }
 
+function cleanFolderName(value: string): string {
+  const name = value.trim();
+  if (!name) throw new Error('文件夹名称不能为空');
+  if (/[\\/]/.test(name) || name === '.' || name === '..') {
+    throw new Error('文件夹名称不能包含斜杠或 ..');
+  }
+  return name;
+}
+
 function parseJsonArray(value: unknown): string[] {
   if (typeof value !== 'string' || value.length === 0) return [];
   try {
@@ -60,10 +69,11 @@ export class FolderRepository {
   }
 
   create(input: { name: string; parentId: string | null; sort: number }): Folder {
+    const name = cleanFolderName(input.name);
     const id = randomUUID();
     this.db
       .prepare(`INSERT INTO folders (id, parent_id, name, sort, created_at) VALUES (?, ?, ?, ?, ?)`)
-      .run(id, input.parentId, input.name.trim(), input.sort, now());
+      .run(id, input.parentId, name, input.sort, now());
     return this.get(id)!;
   }
 
@@ -73,11 +83,33 @@ export class FolderRepository {
     }
     this.db
       .prepare(`UPDATE folders SET parent_id = ?, name = ?, sort = ? WHERE id = ?`)
-      .run(input.parentId, input.name.trim(), input.sort, id);
+      .run(input.parentId, cleanFolderName(input.name), input.sort, id);
   }
 
   delete(id: string): void {
     this.db.prepare(`DELETE FROM folders WHERE id = ?`).run(id);
+  }
+
+  descendants(id: string): string[] {
+    const folders = this.list();
+    const children = new Map<string, string[]>();
+    for (const folder of folders) {
+      if (!folder.parentId) continue;
+      const list = children.get(folder.parentId) ?? [];
+      list.push(folder.id);
+      children.set(folder.parentId, list);
+    }
+    const output: string[] = [];
+    const queue = [id];
+    const seen = new Set<string>();
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      if (seen.has(current)) continue;
+      seen.add(current);
+      output.push(current);
+      for (const child of children.get(current) ?? []) queue.push(child);
+    }
+    return output;
   }
 
   tagsFor(folderId: string): Tag[] {
@@ -148,6 +180,21 @@ export class TagRepository {
       .prepare(`INSERT INTO tags (id, name, group_name, created_at) VALUES (?, ?, ?, ?)`)
       .run(id, name.trim(), groupName.trim(), now());
     return this.get(id)!;
+  }
+
+  findOrCreate(name: string, groupName: string): Tag {
+    const cleanName = name.trim();
+    const cleanGroup = groupName.trim();
+    const row = this.db
+      .prepare(
+        `SELECT id, name, group_name FROM tags
+         WHERE name = ? AND group_name = ? LIMIT 1`,
+      )
+      .get(cleanName, cleanGroup) as any;
+    if (row) {
+      return { id: String(row.id), name: String(row.name), groupName: String(row.group_name ?? '') };
+    }
+    return this.create(cleanName, cleanGroup);
   }
 
   update(id: string, name: string, groupName: string): void {
@@ -330,6 +377,16 @@ export class RuleRepository {
 
   setEnabled(id: string, enabled: boolean): void {
     this.db.prepare(`UPDATE rules SET enabled = ? WHERE id = ?`).run(enabled ? 1 : 0, id);
+  }
+
+  disableForFolders(folderIds: string[]): void {
+    if (folderIds.length === 0) return;
+    const placeholders = folderIds.map(() => '?').join(', ');
+    this.db
+      .prepare(
+        `UPDATE rules SET enabled = 0 WHERE target_folder_id IN (${placeholders})`,
+      )
+      .run(...folderIds);
   }
 
   delete(id: string): void {
@@ -516,6 +573,13 @@ export class ItemRepository {
     return new Map(rows.map((row) => [String(row.folder_id), Number(row.count)]));
   }
 
+  countByTask(): Map<string, number> {
+    const rows = this.db
+      .prepare(`SELECT task_id, COUNT(*) AS count FROM items GROUP BY task_id`)
+      .all() as any[];
+    return new Map(rows.map((row) => [String(row.task_id), Number(row.count)]));
+  }
+
   deleteByTaskExcept(taskId: string, keepRelPaths: string[]): void {
     const keep = new Set(keepRelPaths);
     const rows = this.db
@@ -582,6 +646,14 @@ export class WatchHistoryRepository {
       )
       .get(folderId) as any;
     return row ? mapWatch(row) : null;
+  }
+
+  deleteForFolders(folderIds: string[]): void {
+    if (folderIds.length === 0) return;
+    const placeholders = folderIds.map(() => '?').join(', ');
+    this.db
+      .prepare(`DELETE FROM watch_history WHERE folder_id IN (${placeholders})`)
+      .run(...folderIds);
   }
 }
 

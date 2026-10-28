@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { execFile } from 'node:child_process';
 import Fastify, { LogController, type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
 import formbody from '@fastify/formbody';
 import fastifyStatic from '@fastify/static';
@@ -17,10 +18,11 @@ import {
   TaskRepository,
   WatchHistoryRepository,
 } from './db/repositories.js';
-import { UNASSIGNED_FOLDER_ID, type Folder, type PlayableItem, type Rule, type Source } from './domain/models.js';
+import { type Folder, type PlayableItem, type RemoteEntry, type Rule, type Source, type SourceType } from './domain/models.js';
 import { resolveRemote, validateRule } from './domain/rules.js';
 import { HttpClient } from './util/http.js';
 import { HttpDirectoryClient } from './sources/httpDirectory.js';
+import { LocalDirectoryClient } from './sources/localDirectory.js';
 import { QbittorrentClient, type QbTorrent } from './qbittorrent/client.js';
 import { QbIndexer } from './qbittorrent/indexer.js';
 import { DownloadService } from './services/downloads.js';
@@ -54,6 +56,34 @@ function asArray(value: unknown): string[] {
 
 function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function asSourceType(value: unknown): SourceType {
+  return value === 'RSS' || value === 'LOCAL_DIRECTORY' ? value : 'HTTP_DIRECTORY';
+}
+
+function asciiJson(value: unknown): string {
+  // HTTP headers are ISO-8859-1; escape non-ASCII so Chinese folder/tag names
+  // survive HX-Trigger without a 500.
+  return JSON.stringify(value).replace(
+    /[^\x20-\x7E]/g,
+    (char) => `\\u${char.charCodeAt(0).toString(16).padStart(4, '0')}`,
+  );
+}
+
+function normalizeSourceAddress(type: SourceType, raw: string): string {
+  const value = raw.trim();
+  if (!value) throw new Error('名称和地址不能为空');
+  if (type === 'LOCAL_DIRECTORY') {
+    const resolved = path.resolve(value);
+    const stat = fs.statSync(resolved);
+    if (!stat.isDirectory()) throw new Error('本地源必须是目录');
+    return resolved;
+  }
+  if (!/^https?:\/\//i.test(value)) {
+    throw new Error('HTTP/RSS 地址必须以 http:// 或 https:// 开头');
+  }
+  return value;
 }
 
 function redirectWith(reply: FastifyReply, target: string, notice?: string, error?: string): void {
@@ -228,10 +258,14 @@ export async function buildApp(): Promise<FastifyInstance> {
     const httpErrors: string[] = [];
     const settingsValue = settings.get();
     const http = new HttpClient(settingsValue.proxyUrl);
-    const browser = new HttpDirectoryClient(http);
-    const cache = new Map<string, import('./domain/models.js').RemoteEntry[]>();
+    const httpBrowser = new HttpDirectoryClient(http);
+    const cache = new Map<string, RemoteEntry[]>();
     for (const source of sources.list()) {
-      if (source.type !== 'HTTP_DIRECTORY' || !source.enabled) continue;
+      if (!source.enabled) continue;
+      if (source.type !== 'HTTP_DIRECTORY' && source.type !== 'LOCAL_DIRECTORY') continue;
+      const browser = source.type === 'LOCAL_DIRECTORY'
+        ? new LocalDirectoryClient(source.baseUrl)
+        : httpBrowser;
       const sourceRules = rules.listBySource(source.id)
         .filter((rule) => rule.enabled && rule.targetFolderId === folder.id);
       for (const rule of sourceRules) {
@@ -307,11 +341,15 @@ export async function buildApp(): Promise<FastifyInstance> {
   app.post('/folders', async (request, reply) => {
     const body = request.body as Record<string, unknown>;
     const name = asString(body.name).trim();
+    const form = {
+      title: '新建文件夹', active: 'library', mode: 'create', folder: null,
+      selectedTagIds: asArray(body.tags),
+      formName: name,
+      formSort: Number(body.sort) || 0,
+      formParentId: asString(body.parentId),
+    };
     if (!name) {
-      return reply.view('folder-form', baseLocals({
-        title: '新建文件夹', active: 'library', mode: 'create', folder: null,
-        selectedTagIds: asArray(body.tags), error: '文件夹名称不能为空',
-      }));
+      return reply.view('folder-form', baseLocals({ ...form, error: '文件夹名称不能为空' }));
     }
     try {
       const created = folders.create({
@@ -322,10 +360,7 @@ export async function buildApp(): Promise<FastifyInstance> {
       folders.setTags(created.id, asArray(body.tags));
       return redirectWith(reply, `/folders/${created.id}`, '文件夹已创建');
     } catch (error) {
-      return reply.view('folder-form', baseLocals({
-        title: '新建文件夹', active: 'library', mode: 'create', folder: null,
-        selectedTagIds: asArray(body.tags), error: messageOf(error),
-      }));
+      return reply.view('folder-form', baseLocals({ ...form, error: messageOf(error) }));
     }
   });
 
@@ -348,11 +383,15 @@ export async function buildApp(): Promise<FastifyInstance> {
     if (!folder) return reply.code(404).send('文件夹不存在');
     const body = request.body as Record<string, unknown>;
     const name = asString(body.name).trim();
+    const form = {
+      title: `编辑 ${folder.name}`, active: 'library', mode: 'edit', folder,
+      selectedTagIds: asArray(body.tags),
+      formName: name,
+      formSort: Number(body.sort) || 0,
+      formParentId: asString(body.parentId),
+    };
     if (!name) {
-      return reply.view('folder-form', baseLocals({
-        title: `编辑 ${folder.name}`, active: 'library', mode: 'edit', folder,
-        selectedTagIds: asArray(body.tags), error: '文件夹名称不能为空',
-      }));
+      return reply.view('folder-form', baseLocals({ ...form, error: '文件夹名称不能为空' }));
     }
     try {
       folders.update(id, {
@@ -363,18 +402,17 @@ export async function buildApp(): Promise<FastifyInstance> {
       folders.setTags(id, asArray(body.tags));
       return redirectWith(reply, `/folders/${id}`, '文件夹已保存');
     } catch (error) {
-      return reply.view('folder-form', baseLocals({
-        title: `编辑 ${folder.name}`, active: 'library', mode: 'edit', folder,
-        selectedTagIds: asArray(body.tags), error: messageOf(error),
-      }));
+      return reply.view('folder-form', baseLocals({ ...form, error: messageOf(error) }));
     }
   });
 
   app.post('/folders/:id/delete', async (request, reply) => {
     const { id } = request.params as { id: string };
-    if (id === UNASSIGNED_FOLDER_ID) {
-      return redirectWith(reply, '/library', undefined, '未分类文件夹不能删除');
-    }
+    const folder = folders.get(id);
+    if (!folder) return redirectWith(reply, '/library', undefined, '文件夹不存在');
+    const subtree = folders.descendants(id);
+    rules.disableForFolders(subtree);
+    history.deleteForFolders(subtree);
     folders.delete(id);
     return redirectWith(reply, '/library', '文件夹已删除（本地文件不会删除）');
   });
@@ -417,33 +455,34 @@ export async function buildApp(): Promise<FastifyInstance> {
       active: 'sources',
       mode: 'create',
       source: null,
-      presetType: asString((request.query as Record<string, unknown>).type) || 'HTTP_DIRECTORY',
+      presetType: asSourceType((request.query as Record<string, unknown>).type),
     }));
   });
 
   app.post('/sources', async (request, reply) => {
     const body = request.body as Record<string, unknown>;
     const name = asString(body.name).trim();
-    const baseUrl = asString(body.baseUrl).trim();
-    const type = asString(body.type) === 'RSS' ? 'RSS' : 'HTTP_DIRECTORY';
-    if (!name || !baseUrl) {
-      return reply.view('source-form', baseLocals({
-        title: '新建片源', active: 'sources', mode: 'create', source: null,
-        presetType: type, error: '名称和地址不能为空',
-      }));
-    }
+    const type = asSourceType(body.type);
+    let baseUrl = '';
     try {
+      baseUrl = normalizeSourceAddress(type, asString(body.baseUrl));
+      if (!name) throw new Error('名称不能为空');
       const created = sources.create({
         name,
         baseUrl,
         type,
-        torrentLinkRegex: asString(body.torrentLinkRegex).trim() || null,
+        torrentLinkRegex: type === 'RSS'
+          ? asString(body.torrentLinkRegex).trim() || null
+          : null,
       });
       return redirectWith(reply, `/sources/${created.id}/rules`, '片源已创建，接下来添加规则');
     } catch (error) {
       return reply.view('source-form', baseLocals({
         title: '新建片源', active: 'sources', mode: 'create', source: null,
-        presetType: type, error: messageOf(error),
+        presetType: type,
+        formName: name,
+        formBaseUrl: asString(body.baseUrl),
+        error: messageOf(error),
       }));
     }
   });
@@ -466,20 +505,26 @@ export async function buildApp(): Promise<FastifyInstance> {
     if (!source) return reply.code(404).send('片源不存在');
     const body = request.body as Record<string, unknown>;
     const name = asString(body.name).trim();
-    const baseUrl = asString(body.baseUrl).trim();
-    if (!name || !baseUrl) {
+    try {
+      const baseUrl = normalizeSourceAddress(source.type, asString(body.baseUrl));
+      if (!name) throw new Error('名称不能为空');
+      sources.update(id, {
+        name,
+        baseUrl,
+        torrentLinkRegex: source.type === 'RSS'
+          ? asString(body.torrentLinkRegex).trim() || null
+          : null,
+        enabled: body.enabled === 'on' || body.enabled === 'true' || body.enabled === '1',
+      });
+      return redirectWith(reply, '/sources', '片源已保存');
+    } catch (error) {
       return reply.view('source-form', baseLocals({
         title: `编辑 ${source.name}`, active: 'sources', mode: 'edit', source,
-        error: '名称和地址不能为空',
+        formName: name,
+        formBaseUrl: asString(body.baseUrl),
+        error: messageOf(error),
       }));
     }
-    sources.update(id, {
-      name,
-      baseUrl,
-      torrentLinkRegex: asString(body.torrentLinkRegex).trim() || null,
-      enabled: body.enabled === 'on' || body.enabled === 'true' || body.enabled === '1',
-    });
-    return redirectWith(reply, '/sources', '片源已保存');
   });
 
   app.post('/sources/:id/toggle', async (request, reply) => {
@@ -551,7 +596,9 @@ export async function buildApp(): Promise<FastifyInstance> {
       .filter(Boolean);
     const matchRegex = asString(body.matchRegex).trim();
     const displayNameRegex = asString(body.displayNameRegex).trim() || null;
-    const validation = validateRule({ matchRegex, displayNameRegex, folderRegexes });
+    const targetFolderId = asString(body.targetFolderId).trim();
+    const validation = validateRule({ matchRegex, displayNameRegex, folderRegexes })
+      ?? (targetFolderId && folders.get(targetFolderId) ? null : '请选择目标文件夹');
     if (validation) {
       return reply.view('rule-form', baseLocals({
         title: `新建规则 · ${source.name}`, active: 'sources', mode: 'create',
@@ -560,7 +607,7 @@ export async function buildApp(): Promise<FastifyInstance> {
     }
     rules.create({
       sourceId: id,
-      targetFolderId: asString(body.targetFolderId) || null,
+      targetFolderId,
       orderNo: Number(body.orderNo) || 0,
       matchRegex,
       displayNameRegex,
@@ -599,7 +646,9 @@ export async function buildApp(): Promise<FastifyInstance> {
       .filter(Boolean);
     const matchRegex = asString(body.matchRegex).trim();
     const displayNameRegex = asString(body.displayNameRegex).trim() || null;
-    const validation = validateRule({ matchRegex, displayNameRegex, folderRegexes });
+    const targetFolderId = asString(body.targetFolderId).trim();
+    const validation = validateRule({ matchRegex, displayNameRegex, folderRegexes })
+      ?? (targetFolderId && folders.get(targetFolderId) ? null : '请选择目标文件夹');
     if (validation) {
       return reply.view('rule-form', baseLocals({
         title: `编辑规则 · ${source.name}`, active: 'sources', mode: 'edit',
@@ -607,7 +656,7 @@ export async function buildApp(): Promise<FastifyInstance> {
       }));
     }
     rules.update(id, {
-      targetFolderId: asString(body.targetFolderId) || null,
+      targetFolderId,
       orderNo: Number(body.orderNo) || 0,
       matchRegex,
       displayNameRegex,
@@ -667,6 +716,149 @@ export async function buildApp(): Promise<FastifyInstance> {
     return redirectWith(reply, '/tags', '标签已删除');
   });
 
+  const folderDepth = (folderId: string): number => {
+    let depth = 0;
+    let current = folders.get(folderId);
+    const seen = new Set<string>();
+    while (current?.parentId && !seen.has(current.id)) {
+      seen.add(current.id);
+      depth += 1;
+      current = folders.get(current.parentId);
+    }
+    return depth;
+  };
+
+  app.get('/quick/folder', async (request, reply) => {
+    const query = request.query as Record<string, unknown>;
+    return reply.view('quick-folder', baseLocals({
+      action: '/quick/folder',
+      parentId: asString(query.parentId) || '',
+      formName: '',
+      formSort: 0,
+      selectedTagIds: [],
+      error: null,
+    }));
+  });
+
+  app.post('/quick/folder', async (request, reply) => {
+    const body = request.body as Record<string, unknown>;
+    const rawName = asString(body.name).trim();
+    const parentId = asString(body.parentId).trim() || null;
+    const tagIds = asArray(body.tags);
+    try {
+      if (!rawName) throw new Error('文件夹名称不能为空');
+      if (parentId && !folders.get(parentId)) throw new Error('上级文件夹不存在');
+      const segments = rawName.split('/').map((part) => part.trim()).filter(Boolean);
+      if (segments.length === 0) throw new Error('文件夹名称不能为空');
+
+      let currentParent = parentId;
+      let leaf = null;
+      const pathFolders = [];
+      for (let i = 0; i < segments.length; i += 1) {
+        const name = segments[i];
+        const existing = folders.list().find(
+          (folder) => folder.parentId === currentParent && folder.name === name,
+        );
+        const folder = existing ?? folders.create({
+          name,
+          parentId: currentParent,
+          sort: i === segments.length - 1 ? Number(body.sort) || 0 : 0,
+        });
+        currentParent = folder.id;
+        leaf = folder;
+        pathFolders.push(folder);
+      }
+      if (!leaf) throw new Error('文件夹创建失败');
+      if (tagIds.length > 0) folders.setTags(leaf.id, tagIds);
+      const payload = pathFolders.map((folder) => {
+        const depth = folderDepth(folder.id);
+        return {
+          id: folder.id,
+          name: folder.name,
+          parentId: folder.parentId,
+          depth,
+          label: `${'　'.repeat(depth)}${folder.name}`,
+        };
+      });
+      reply.header('HX-Trigger', asciiJson({
+        quickFolderCreated: {
+          folders: payload,
+          leafId: leaf.id,
+          id: leaf.id,
+          name: leaf.name,
+          parentId: leaf.parentId,
+          depth: folderDepth(leaf.id),
+          label: payload[payload.length - 1]?.label ?? leaf.name,
+        },
+      }));
+      return reply.code(204).send();
+    } catch (error) {
+      return reply.view('quick-folder', baseLocals({
+        action: '/quick/folder',
+        parentId: parentId ?? '',
+        formName: rawName,
+        formSort: Number(body.sort) || 0,
+        selectedTagIds: tagIds,
+        error: messageOf(error),
+      }));
+    }
+  });
+
+  app.get('/quick/tag', async (_request, reply) => {
+    return reply.view('quick-tag', baseLocals({
+      action: '/quick/tag',
+      formName: '',
+      formGroup: '',
+      error: null,
+    }));
+  });
+
+  app.post('/quick/tag', async (request, reply) => {
+    const body = request.body as Record<string, unknown>;
+    const name = asString(body.name).trim();
+    const groupName = asString(body.groupName).trim();
+    if (!name) {
+      return reply.view('quick-tag', baseLocals({
+        action: '/quick/tag',
+        formName: name,
+        formGroup: groupName,
+        error: '标签名称不能为空',
+      }));
+    }
+    const tag = tags.findOrCreate(name, groupName);
+    reply.header('HX-Trigger', asciiJson({
+      quickTagCreated: {
+        id: tag.id,
+        name: tag.name,
+        groupName: tag.groupName,
+        label: tag.groupName ? `${tag.groupName} / ${tag.name}` : tag.name,
+      },
+    }));
+    return reply.code(204).send();
+  });
+
+  app.post('/api/pick-folder', async (_request, reply) => {
+    if (process.platform !== 'win32') {
+      return reply.send({ path: null, error: '仅支持 Windows' });
+    }
+    const helper = path.resolve('tools/pick-folder.ps1');
+    const result = await new Promise<{ path: string | null; error?: string }>((resolve) => {
+      execFile(
+        'powershell.exe',
+        ['-NoProfile', '-STA', '-ExecutionPolicy', 'Bypass', '-File', helper],
+        { windowsHide: true, timeout: 120_000, encoding: 'utf8' },
+        (error, stdout, stderr) => {
+          if (error) {
+            resolve({ path: null, error: String(stderr || error.message).trim() });
+            return;
+          }
+          resolve({ path: stdout.trim() || null });
+        },
+      );
+    });
+    return reply.send(result);
+  });
+
   const qbStatus = async (): Promise<{
     apiVersion: string | null;
     torrents: QbTorrent[];
@@ -695,6 +887,24 @@ export async function buildApp(): Promise<FastifyInstance> {
     const query = request.query as Record<string, unknown>;
     const status = await qbStatus();
     const taskList = tasks.list();
+    const counts = items.countByTask();
+    const taskByTag = new Map(taskList.map((task) => [task.qbTag, task]));
+    const taskInfoByHash = new Map<string, {
+      title: string;
+      itemCount: number;
+      state: string;
+    }>();
+    for (const torrent of status.torrents) {
+      const tag = torrent.tags.split(',').map((item) => item.trim())
+        .find((item) => item.startsWith('index-'));
+      const task = tag ? taskByTag.get(tag) : undefined;
+      if (!task) continue;
+      taskInfoByHash.set(torrent.hash, {
+        title: task.title,
+        itemCount: counts.get(task.id) ?? 0,
+        state: task.state,
+      });
+    }
     return baseLocals({
       title: '下载',
       active: 'downloads',
@@ -702,6 +912,7 @@ export async function buildApp(): Promise<FastifyInstance> {
       taskList,
       apiVersion: status.apiVersion,
       torrents: status.torrents,
+      taskInfoByHash,
       qbError: status.error,
       notice: asString(query.notice) || null,
       error: asString(query.error) || null,

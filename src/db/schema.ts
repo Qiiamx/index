@@ -1,3 +1,16 @@
+export const SOURCES_TABLE_SQL = `
+CREATE TABLE IF NOT EXISTS sources (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  base_url TEXT NOT NULL,
+  type TEXT NOT NULL,
+  enabled INTEGER NOT NULL DEFAULT 1,
+  torrent_link_regex TEXT,
+  last_error TEXT,
+  last_fetched_at INTEGER,
+  created_at INTEGER NOT NULL
+)`;
+
 export const SCHEMA = `
 CREATE TABLE IF NOT EXISTS folders (
   id TEXT PRIMARY KEY,
@@ -20,17 +33,7 @@ CREATE TABLE IF NOT EXISTS folder_tags (
   PRIMARY KEY (folder_id, tag_id)
 );
 
-CREATE TABLE IF NOT EXISTS sources (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  base_url TEXT NOT NULL,
-  type TEXT NOT NULL CHECK (type IN ('HTTP_DIRECTORY', 'RSS')),
-  enabled INTEGER NOT NULL DEFAULT 1,
-  torrent_link_regex TEXT,
-  last_error TEXT,
-  last_fetched_at INTEGER,
-  created_at INTEGER NOT NULL
-);
+${SOURCES_TABLE_SQL};
 
 CREATE TABLE IF NOT EXISTS rules (
   id TEXT PRIMARY KEY,

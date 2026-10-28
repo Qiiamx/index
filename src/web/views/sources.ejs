@@ -3,11 +3,12 @@
 <section class="page-head">
   <div>
     <h1>源</h1>
-    <p class="muted">HTTP 目录源在线播放；RSS 源生成任务并交给 qBittorrent。</p>
+    <p class="muted">HTTP 目录源在线播放；RSS 源生成任务并交给 qBittorrent；本地目录源直接读取本机文件。</p>
   </div>
   <div class="row-actions">
     <a class="button" href="/sources/new?type=HTTP_DIRECTORY">添加 HTTP 目录</a>
     <a class="button secondary" href="/sources/new?type=RSS">添加 RSS</a>
+    <a class="button secondary" href="/sources/new?type=LOCAL_DIRECTORY">添加本地目录</a>
   </div>
 </section>
 
@@ -19,7 +20,7 @@
     <div class="source-row">
       <div class="source-main">
         <div class="source-title">
-          <span class="type-badge"><%= source.type === 'RSS' ? 'RSS' : 'HTTP' %></span>
+          <span class="type-badge"><%= source.type === 'RSS' ? 'RSS' : (source.type === 'LOCAL_DIRECTORY' ? '本地' : 'HTTP') %></span>
           <%= source.name %>
           <span class="<%= source.enabled ? 'status-on' : 'status-off' %>"><%= source.enabled ? '启用' : '停用' %></span>
         </div>

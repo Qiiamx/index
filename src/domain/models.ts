@@ -1,4 +1,4 @@
-export type SourceType = 'HTTP_DIRECTORY' | 'RSS';
+export type SourceType = 'HTTP_DIRECTORY' | 'RSS' | 'LOCAL_DIRECTORY';
 
 export type TaskState =
   | 'PENDING'
@@ -100,12 +100,9 @@ export interface PlayableItem {
   ruleId: string | null;
   sourceId: string;
   sourceName: string;
-  kind: 'bt' | 'http';
+  kind: 'bt' | 'http' | 'local';
   size?: number;
 }
-
-export const UNASSIGNED_FOLDER_ID = 'folder-unassigned';
-export const UNASSIGNED_FOLDER_NAME = '未分类';
 
 export interface AppSettings {
   qbUrl: string;

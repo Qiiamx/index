@@ -23,6 +23,10 @@
           <td class="name-cell">
             <div><%= torrent.name %></div>
             <div class="muted small"><%= torrent.save_path %></div>
+            <% var taskInfo = taskInfoByHash ? taskInfoByHash.get(torrent.hash) : null; %>
+            <% if (taskInfo && taskInfo.state === 'COMPLETED' && taskInfo.itemCount === 0) { %>
+              <div class="muted small danger-text">未匹配规则，未生成条目</div>
+            <% } %>
           </td>
           <td>
             <div><%= qbStateLabel(torrent.state) %></div>

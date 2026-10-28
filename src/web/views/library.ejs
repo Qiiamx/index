@@ -51,6 +51,9 @@
       </div>
       <div class="row-actions">
         <a class="link" href="/folders/<%= folder.id %>/edit">编辑</a>
+        <form method="post" action="/folders/<%= folder.id %>/delete" onsubmit="return confirm('删除这个文件夹及其子文件夹？逻辑条目会删除，本地文件不会删除；指向这些文件夹的规则会被禁用。')">
+          <button class="link-button danger-text" type="submit">删除</button>
+        </form>
       </div>
     </div>
   <% }) %>

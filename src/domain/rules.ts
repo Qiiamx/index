@@ -182,7 +182,7 @@ export async function resolveRemote(
           ruleId: rule.id,
           sourceId: source.id,
           sourceName: source.name,
-          kind: 'http',
+          kind: source.type === 'LOCAL_DIRECTORY' ? 'local' : 'http',
         });
       } else if (entry.isDirectory) {
         await walk(level + 1, entry.url);

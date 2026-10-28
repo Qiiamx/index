@@ -1,0 +1,62 @@
+<%
+  const currentName = (typeof formName !== 'undefined' && formName !== null && formName !== '')
+    ? formName
+    : ((typeof folder !== 'undefined' && folder) ? folder.name : '');
+  const currentSort = (typeof formSort !== 'undefined')
+    ? formSort
+    : ((typeof folder !== 'undefined' && folder) ? folder.sort : 0);
+  const currentParent = (typeof formParentId !== 'undefined')
+    ? formParentId
+    : ((typeof folder !== 'undefined' && folder)
+      ? (folder.parentId || '')
+      : (typeof parentId !== 'undefined' ? parentId : ''));
+  const currentTagIds = typeof selectedTagIds !== 'undefined' ? selectedTagIds : [];
+%>
+
+<label>
+  <span>名称</span>
+  <input type="text" name="name" required value="<%= currentName %>" placeholder="例如：2026/10月/新番 可一次创建父子级">
+  <small class="muted">名称可用 <code>/</code> 分隔，缺失的父文件夹会自动创建。</small>
+</label>
+
+<label>
+  <span>上级文件夹</span>
+  <select name="parentId">
+    <option value="">（根目录）</option>
+    <% flatFolders.forEach(function (entry) { var item = entry.folder; %>
+      <% if (typeof folder !== 'undefined' && folder && item.id === folder.id) return; %>
+      <option value="<%= item.id %>" <%= currentParent === item.id ? 'selected' : '' %>>
+        <%= '　'.repeat(entry.depth) + item.name %>
+      </option>
+    <% }) %>
+  </select>
+</label>
+
+<label>
+  <span>排序</span>
+  <input type="number" name="sort" value="<%= currentSort %>">
+</label>
+
+<fieldset>
+  <legend>标签</legend>
+  <div class="field-head">
+    <span class="muted small">可以多选</span>
+    <% if (typeof showTagCreate !== 'undefined' && showTagCreate) { %>
+      <button type="button" class="button secondary small-button"
+              hx-get="/quick/tag"
+              hx-target="#quick-dialog-body"
+              hx-swap="innerHTML"
+              hx-on::after-request="document.getElementById('quick-dialog').showModal()">
+        新建标签
+      </button>
+    <% } %>
+  </div>
+  <div class="checkbox-grid" id="folder-tag-options">
+    <% tags.forEach(function (tag) { %>
+      <label class="checkbox">
+        <input type="checkbox" name="tags" value="<%= tag.id %>" <%= currentTagIds.includes(tag.id) ? 'checked' : '' %>>
+        <%= tag.groupName ? tag.groupName + ' / ' : '' %><%= tag.name %>
+      </label>
+    <% }) %>
+  </div>
+</fieldset>

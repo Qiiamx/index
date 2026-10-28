@@ -8,26 +8,34 @@
 <form class="card form" method="post" action="<%= mode === 'create' ? '/sources' : '/sources/' + source.id %>">
   <label>
     <span>名称</span>
-    <input type="text" name="name" required value="<%= source ? source.name : '' %>">
+    <input type="text" name="name" required value="<%= typeof formName !== 'undefined' && formName ? formName : (source ? source.name : '') %>">
   </label>
 
   <label>
     <span>类型</span>
     <% if (mode === 'create') { %>
-      <select name="type">
-        <option value="HTTP_DIRECTORY" <%= (typeof presetType !== 'undefined' ? presetType : 'HTTP_DIRECTORY') === 'HTTP_DIRECTORY' ? 'selected' : '' %>>HTTP 目录</option>
-        <option value="RSS" <%= (typeof presetType !== 'undefined' ? presetType : '') === 'RSS' ? 'selected' : '' %>>RSS 订阅</option>
+      <% var selectedType = typeof presetType !== 'undefined' ? presetType : 'HTTP_DIRECTORY'; %>
+      <select name="type" id="source-type">
+        <option value="HTTP_DIRECTORY" <%= selectedType === 'HTTP_DIRECTORY' ? 'selected' : '' %>>HTTP 目录</option>
+        <option value="RSS" <%= selectedType === 'RSS' ? 'selected' : '' %>>RSS 订阅</option>
+        <option value="LOCAL_DIRECTORY" <%= selectedType === 'LOCAL_DIRECTORY' ? 'selected' : '' %>>本地目录</option>
       </select>
     <% } else { %>
-      <input type="text" disabled value="<%= source.type === 'RSS' ? 'RSS 订阅' : 'HTTP 目录' %>">
+      <input type="text" disabled value="<%= source.type === 'RSS' ? 'RSS 订阅' : (source.type === 'LOCAL_DIRECTORY' ? '本地目录' : 'HTTP 目录') %>">
       <input type="hidden" name="type" value="<%= source.type %>">
       <p class="muted small">类型创建后不可修改。</p>
     <% } %>
   </label>
 
   <label>
-    <span>地址</span>
-    <input type="url" name="baseUrl" required value="<%= source ? source.baseUrl : '' %>" placeholder="http://host:8000/media/">
+    <span>地址 / 本地目录路径</span>
+    <div class="input-with-button">
+      <input type="text" name="baseUrl" id="source-address" required
+             value="<%= typeof formBaseUrl !== 'undefined' && formBaseUrl ? formBaseUrl : (source ? source.baseUrl : '') %>"
+             placeholder="http://host:8000/media/ 或 D:\Anime">
+      <button type="button" class="button secondary" onclick="pickLocalFolder()">浏览…</button>
+    </div>
+    <small class="muted">本地目录必须是本机绝对路径；“浏览…”只用于本地目录；HTTP/RSS 直接填 URL。</small>
   </label>
 
   <label>
@@ -48,5 +56,12 @@
     <a class="button secondary" href="/sources">取消</a>
   </div>
 </form>
+
+<% if (mode === 'edit') { %>
+<form class="card form" method="post" action="/sources/<%= source.id %>/delete"
+      onsubmit="return confirm('删除这个片源？会删除 Index 里的规则、任务记录和索引条目；不会删除 qBittorrent 任务或本地文件。')">
+  <button class="button danger" type="submit">删除片源</button>
+</form>
+<% } %>
 
 <%- include('partials/foot') %>

@@ -1,6 +1,5 @@
 import path from 'node:path';
 import type { DownloadTask, TaskState } from '../domain/models.js';
-import { UNASSIGNED_FOLDER_ID } from '../domain/models.js';
 import { matchFirst } from '../domain/rules.js';
 import type { ItemRepository, RuleRepository, SettingsService, SourceRepository, TaskRepository } from '../db/repositories.js';
 import { QbittorrentClient, type QbTorrent, type QbTorrentFile } from './client.js';
@@ -132,9 +131,9 @@ export class QbIndexer {
       if (!isVideoFile(relPath)) continue;
       if (file.progress < 0.999) continue;
       const matched = matchFirst(rules, relPath);
-      const folderId = matched?.rule.targetFolderId ?? UNASSIGNED_FOLDER_ID;
-      const fallbackTitle = path.basename(relPath);
-      const title = matched?.displayName ?? fallbackTitle;
+      if (!matched || !matched.rule.targetFolderId) continue;
+      const folderId = matched.rule.targetFolderId;
+      const title = matched.displayName;
       const absPath = path.resolve(savePath, relPath);
       this.items.upsert({
         folderId,

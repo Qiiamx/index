@@ -13,15 +13,25 @@
 
 <form class="card form" method="post" action="<%= mode === 'create' ? '/sources/' + source.id + '/rules' : '/rules/' + rule.id %>">
   <label>
-    <span>目标文件夹</span>
-    <select name="targetFolderId">
-      <option value="">未分类</option>
+    <div class="field-head">
+      <span>目标文件夹</span>
+      <button type="button" class="button secondary small-button"
+              hx-get="/quick/folder"
+              hx-target="#quick-dialog-body"
+              hx-swap="innerHTML"
+              hx-on::after-request="document.getElementById('quick-dialog').showModal()">
+        新建文件夹
+      </button>
+    </div>
+    <select name="targetFolderId" required>
+      <option value="" disabled <%= !rule || !rule.targetFolderId ? 'selected' : '' %>>请选择文件夹</option>
       <% flatFolders.forEach(function (entry) { var item = entry.folder; %>
         <option value="<%= item.id %>" <%= rule && rule.targetFolderId === item.id ? 'selected' : '' %>>
           <%= '　'.repeat(entry.depth) + item.name %>
         </option>
       <% }) %>
     </select>
+    <small class="muted">规则必须指定目标文件夹；未匹配的文件不会进入任何文件夹。</small>
   </label>
 
   <label>

@@ -9,7 +9,10 @@
     <h1><%= source.name %> · 规则</h1>
     <p class="muted">多级目录规则按顺序匹配；最后一个正则匹配最终文件，改名只作用于最后一层。</p>
   </div>
-  <a class="button" href="/sources/<%= source.id %>/rules/new">新建规则</a>
+  <div class="row-actions">
+    <a class="button secondary" href="/folders/new">新建文件夹</a>
+    <a class="button" href="/sources/<%= source.id %>/rules/new">新建规则</a>
+  </div>
 </section>
 
 <section class="card">
@@ -22,7 +25,7 @@
         <div class="rule-title">
           #<%= rule.orderNo %>
           <% var target = flatFolders.find(function (entry) { return entry.folder.id === rule.targetFolderId; }); %>
-          目标：<strong><%= target ? target.folder.name : '未分配' %></strong>
+          目标：<strong class="<%= target ? '' : 'danger-text' %>"><%= target ? target.folder.name : '目标已删除，请重新选择' %></strong>
           <span class="<%= rule.enabled ? 'status-on' : 'status-off' %>"><%= rule.enabled ? '启用' : '停用' %></span>
         </div>
         <div class="muted small">目录：<%= rule.folderRegexes.length ? rule.folderRegexes.join(' / ') : '（无，直接匹配文件名）' %></div>
