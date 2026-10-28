@@ -166,6 +166,7 @@ settings(key,value)  -- key='app' 存 JSON
 20. 原生目录选择器由服务端进程弹出，只在服务与浏览器同一台 PC 时有意义；不要把它当成远程客户端的选择器。
 21. 快捷标签使用独立的 `quick-tag-dialog` 叠在文件夹弹窗上；不要把标签表单塞进 `quick-dialog-body`，否则会替换掉尚未保存的文件夹表单。
 22. 追番列表不显示条目数量；本地/HTTP 内容是动态扫描的，不要再用 `items` 表的 BT 计数冒充本地数量。
+23. **删除 `.git` 会清空 `.git/config`**，包括手动设置的 `http.proxy` / `https.proxy`、remote、local user 等。重置仓库前先执行 `git config --local --list > git-local-backup.txt`；重建后恢复代理。不要把“没执行 git config 修改”说成“代理没被动过”，删除 `.git` 本身就是清空本地 Git 配置。
 
 ## 10. 后续待办
 
