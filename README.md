@@ -10,24 +10,43 @@
 
 ## 安装与启动
 
+### 日常使用（推荐）
+
+双击根目录的 **`Index.vbs`**：
+
+- 不会打开命令行窗口；
+- 右下角出现托盘图标，Node 服务在后台运行；
+- 第一次启动会自动安装依赖并构建（隐藏在后台，日志在 `data/logs/`）；
+- 双击托盘图标打开 http://127.0.0.1:8090 ；
+- 右键菜单可以打开数据/日志目录、重启服务、开关机启动、退出。
+
+托盘图标灰色表示服务已停止，蓝色表示运行中。
+
+### 开发/调试
+
 ```powershell
-npm install
+npm install --registry=https://registry.npmmirror.com
+npm run dev
+```
+
+或者：
+
+```powershell
 npm run build
 npm start
 ```
 
-或者直接运行：
+`start.ps1` 会打开命令行和浏览器，只用于开发；日常请用 `Index.vbs`。
+
+如果 npm 下载慢，使用上面的国内镜像。
+
+### 开机启动
+
+右键托盘图标 → 勾选“开机启动”。也可以手动执行：
 
 ```powershell
-.\start.ps1
-```
-
-浏览器打开 http://127.0.0.1:8090 。服务只绑定本机，不需要登录。
-
-如果 npm 下载慢，可以用国内镜像：
-
-```powershell
-npm install --registry=https://registry.npmmirror.com
+.\tools\install-startup.ps1
+.\tools\remove-startup.ps1
 ```
 
 ## 第一次使用
@@ -90,4 +109,20 @@ npm install --registry=https://registry.npmmirror.com
 
 **点击播放没反应**
 
-检查播放器路径是否存在；留空时使用 Windows 默认关联。播放器错误会写在服务端控制台。
+检查播放器路径是否存在；留空时使用 Windows 默认关联。播放器错误会写在 `data/logs/` 的服务端日志里。
+
+**右下角没有托盘图标**
+
+确认双击的是根目录的 `Index.vbs`，不是 `start.ps1`。如果 Node 未安装或 8090 被占用，托盘点会显示停止状态；右键“打开日志目录”查看 `tray.log`、`server-*.err.log`。
+
+**托盘图标是灰色的**
+
+服务没有启动或健康检查失败。右键“启动服务”；如果仍失败，看日志里的 qBittorrent/端口/Node 报错。
+
+**关闭命令行后服务也停了**
+
+这是正常的：服务由托盘托管。日常请用 `Index.vbs`；直接运行 `npm start` 时关掉终端就会停服。
+
+**日志在哪里**
+
+`data/logs/`：`tray.log`、`server-*.out.log`、`server-*.err.log`、`setup.log`。托盘右键可以直接打开目录。

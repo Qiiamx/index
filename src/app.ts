@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
+import Fastify, { LogController, type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
 import formbody from '@fastify/formbody';
 import fastifyStatic from '@fastify/static';
 import fastifyView from '@fastify/view';
@@ -175,7 +175,10 @@ export async function buildApp(): Promise<FastifyInstance> {
     downloads, rss, indexer, player,
   };
 
-  const app = Fastify({ logger: { level: 'info' } });
+  const app = Fastify({
+    logger: { level: 'info' },
+    logController: new LogController({ disableRequestLogging: true }),
+  });
   await app.register(formbody);
   await app.register(fastifyStatic, {
     root: config.publicDir,

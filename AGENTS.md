@@ -9,6 +9,8 @@
 - 当前是 **PC 本地网页服务**：Node 24 + Fastify + EJS/HTMX + SQLite。
 - BT 交给 qBittorrent Web API；播放交给本机播放器；只索引已完成文件。
 - 仅绑定 `127.0.0.1`，默认端口 8090，无登录。
+- 日常入口是根目录 `Index.vbs`：右下角托盘，Node 服务隐藏运行，不弹命令行。
+- 服务不做 Windows 服务（session 0 无法把播放器开在桌面）。
 - 本地数据：`data/index.db`、可选 `config.json`，都不进 Git。
 - 不迁移 Android 数据。
 
@@ -20,9 +22,13 @@ npm run dev        # tsx watch
 npm run typecheck
 npm test
 npm run build      # tsc + 复制 views/public 到 dist
-npm start          # 生产启动
-.\start.ps1        # 自动安装/构建并启动
+npm start          # 生产启动（会占用当前终端）
+.\Index.vbs        # 日常：托盘启动，无控制台
+.\start.ps1        # 开发：控制台启动并打开浏览器
 ```
+
+- 托盘相关：`.\tools\install-startup.ps1` / `.\tools\remove-startup.ps1` 开关开机启动。
+- 改完源码后要 `npm run build`，再在托盘菜单点“重启服务”才会加载新代码。
 
 - **不要后台跑长命令**；一律前台 + 超时。
 - npm 走 10808 代理可能卡在个别包并 `ECONNRESET`；默认用 npmmirror，不要无限重试。
@@ -49,6 +55,13 @@ src/services/rss.ts           RSS 轮询与任务生成
 src/playback/player.ts        启动本机播放器 + 观看记录
 src/web/views/*.ejs           页面
 src/web/public/app.css        样式
+tray/IndexTray.ps1            托盘宿主（WinForms NotifyIcon）
+Index.vbs                     无窗口启动器（wscript）
+tools/make-icons.ps1          生成 assets/*.ico
+tools/install-startup.ps1     开机启动快捷方式
+tools/remove-startup.ps1      删除开机启动
+assets/index.ico              运行中图标
+assets/index-stopped.ico      停止图标
 tests/*.test.ts               vitest
 ```
 
@@ -103,7 +116,19 @@ settings(key,value)  -- key='app' 存 JSON
 - 不记录文件内进度；只写 `watch_history` 的全局/文件夹上次观看。
 - 修改播放器设置只影响下一次播放。
 
-## 8. 已知坑
+## 8. 托盘与进程
+
+- 托盘是日常入口：`Index.vbs` → `cmd /c powershell -WindowStyle Hidden -File tray/IndexTray.ps1`。
+- 托盘拥有 Node 子进程；退出托盘会先停 Node，不要做 Windows 服务（player 会开在 session 0，桌面看不到）。
+- `Start-IndexServer` 用 `Start-Process -WindowStyle Hidden -RedirectStandardOutput/Error`；正常时 `MainWindowHandle = 0`。
+- 健康检查用同步 `HttpWebRequest`（`Proxy = $null`）；不要在 WinForms UI 线程用 `HttpClient...GetAwaiter().GetResult()`，会死锁。
+- 单实例用 `Local\IndexTray` mutex；第二次双击只打开浏览器。
+- 自动重启最多 3 次；服务健康运行超过 60 秒后重置计数。
+- 开机启动快捷方式：Startup 下的 `Index.lnk`，Target `wscript.exe`，参数指向 `Index.vbs`。
+- 日志：`data/logs/tray.log`、`server-*.out.log`、`server-*.err.log`、`setup.log`、`tray-console.log`。
+- 图标由 `tools/make-icons.ps1` 生成多尺寸 PNG ICO；不要手改 `.ico` 后忘记脚本。
+
+## 9. 已知坑
 
 1. `node:sqlite` 在 Node 24 仍是 experimental；生产启动用 `--disable-warning=ExperimentalWarning`。
 2. npm 走本地 10808 代理可能单个包 20s+ 后断连；优先 npmmirror。
@@ -117,8 +142,12 @@ settings(key,value)  -- key='app' 存 JSON
 10. 服务只监听 127.0.0.1；要局域网访问得改 host 并自行加认证。
 11. `watch_history` 只保留 500 条；不要把它当播放进度表。
 12. 规则编辑后已有 `items` 不会自动重排；用下载页“重新索引”重建。
+13. Windows PowerShell 5.1 按 ANSI 读取 `.ps1`；含中文的脚本必须保存为 **UTF-8 with BOM**，否则会解析失败并报“字符串缺少终止符”。
+14. `Index.vbs` 保持 ASCII；它需要被 wscript 按 ANSI 读取。托盘输出重定向到 `tray-console.log`，避免从 shell 启动时继承调用方 stdout 导致命令不返回。
+15. 测试托盘不要用 `Start-Process -Wait` 等 `Index.vbs`/`wscript`：PowerShell 可能等待整棵进程树。直接启动后用进程/健康检查验证。
+16. 托盘 PowerShell 的 `Add-Type -AssemblyName System.Windows.Forms` 在隐藏窗口下正常；但 `NotifyIcon` 必须在 `Application.Run()` 之后才有消息循环，启动期间的 balloon 可能延迟显示。
 
-## 9. 后续待办
+## 10. 后续待办
 
 - 局域网访问 + 简单登录（如需）。
 - HTTP 源播放器的 Cookie/Referer 支持。
