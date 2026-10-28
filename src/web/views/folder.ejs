@@ -1,5 +1,7 @@
 <%- include('partials/head') %>
 
+<div hidden data-folder-detail-id="<%= folder.id %>"></div>
+
 <nav class="breadcrumb">
   <a href="/library">追番</a>
   <% breadcrumb.forEach(function (item, index) { %>
@@ -22,6 +24,13 @@
     </div>
   </div>
   <div class="row-actions">
+    <button type="button" class="button secondary"
+            hx-get="/quick/folder?parentId=<%= folder.id %>"
+            hx-target="#quick-dialog-body"
+            hx-swap="innerHTML"
+            hx-on::after-request="document.getElementById('quick-dialog').showModal()">
+      新建子文件夹
+    </button>
     <a class="button secondary" href="/folders/<%= folder.id %>/edit">编辑</a>
     <form method="post" action="/folders/<%= folder.id %>/delete" onsubmit="return confirm('删除这个文件夹及其子文件夹？逻辑条目会删除，本地文件不会删除；指向这些文件夹的规则会被禁用。')">
       <button class="button danger" type="submit">删除</button>
@@ -47,16 +56,27 @@
 </section>
 <% } %>
 
-<% if (childFolders.length > 0) { %>
 <section class="card">
-  <h2 class="section-title">子文件夹</h2>
-  <div class="chip-row">
-    <% childFolders.forEach(function (child) { %>
-      <a class="chip" href="/folders/<%= child.id %>"><%= child.name %></a>
-    <% }) %>
+  <div class="row-between">
+    <h2 class="section-title">子文件夹</h2>
+    <button type="button" class="button secondary small-button"
+            hx-get="/quick/folder?parentId=<%= folder.id %>"
+            hx-target="#quick-dialog-body"
+            hx-swap="innerHTML"
+            hx-on::after-request="document.getElementById('quick-dialog').showModal()">
+      新建子文件夹
+    </button>
   </div>
+  <% if (childFolders.length === 0) { %>
+    <p class="muted">还没有子文件夹。</p>
+  <% } else { %>
+    <div class="chip-row">
+      <% childFolders.forEach(function (child) { %>
+        <a class="chip" href="/folders/<%= child.id %>"><%= child.name %></a>
+      <% }) %>
+    </div>
+  <% } %>
 </section>
-<% } %>
 
 <% if (httpErrors.length > 0) { %>
 <section class="card warning">

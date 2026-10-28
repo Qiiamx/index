@@ -37,6 +37,12 @@ function addTagCheckbox(container, tag) {
 document.body.addEventListener('quickFolderCreated', (event) => {
   const detail = event.detail || {};
   const folders = Array.isArray(detail.folders) ? detail.folders : [detail];
+  const folderDetail = document.querySelector('[data-folder-detail-id]');
+  if (folderDetail) {
+    document.getElementById('quick-dialog')?.close();
+    window.location.reload();
+    return;
+  }
   const target = document.querySelector('select[name="targetFolderId"]');
   const parent = document.querySelector('select[name="parentId"]');
   folders.forEach((folder) => {
