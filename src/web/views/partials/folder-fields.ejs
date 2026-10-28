@@ -55,9 +55,10 @@
     <% if (typeof showTagCreate !== 'undefined' && showTagCreate) { %>
       <button type="button" class="button secondary small-button"
               hx-get="/quick/tag"
-              hx-target="#quick-dialog-body"
+              hx-target="#quick-tag-dialog-body"
               hx-swap="innerHTML"
-              hx-on::after-request="document.getElementById('quick-dialog').showModal()">
+              onclick="indexRememberTagTarget(this)"
+              hx-on::after-request="document.getElementById('quick-tag-dialog').showModal()">
         新建标签
       </button>
     <% } %>

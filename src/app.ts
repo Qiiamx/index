@@ -307,7 +307,6 @@ export async function buildApp(): Promise<FastifyInstance> {
     const query = request.query as Record<string, unknown>;
     const tagFilter = asString(query.tag);
     const allFolders = folders.list();
-    const counts = items.countByFolder();
     const folderTags = new Map(allFolders.map((folder) => [folder.id, folders.tagsFor(folder.id)]));
     const flat = flattenFolders(allFolders).filter(({ folder }) =>
       !tagFilter || (folderTags.get(folder.id) ?? []).some((tag) => tag.id === tagFilter),
@@ -316,13 +315,11 @@ export async function buildApp(): Promise<FastifyInstance> {
       title: '追番',
       active: 'library',
       flatFolders: flat,
-      counts,
       folderTags,
       selectedTag: tagFilter || null,
       last: history.latestGlobal(),
       notice: asString(query.notice) || null,
       error: asString(query.error) || null,
-      formatSize,
     }));
   });
 
@@ -1051,7 +1048,7 @@ export async function buildApp(): Promise<FastifyInstance> {
     let returnTo = asString(body.returnTo) || '/library';
     if (!returnTo.startsWith('/') || returnTo.startsWith('//')) returnTo = '/library';
     try {
-      player.launch({ folderId, itemKey, title, target });
+      await player.launch({ folderId, itemKey, title, target });
       return redirectWith(reply, returnTo, `已打开：${title}`);
     } catch (error) {
       return redirectWith(reply, returnTo, undefined, messageOf(error));

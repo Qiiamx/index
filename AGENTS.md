@@ -124,7 +124,7 @@ settings(key,value)  -- key='app' 存 JSON
 ## 7. 播放
 
 - 设置 `playerPath` + `playerArgs`；`{file}` 会被替换成本地路径或 HTTP URL。
-- 留空 `playerPath` 时用 `cmd /c start "" <target>`（Windows 默认打开方式）。
+- 留空 `playerPath` 时本地文件用 `explorer.exe <文件>` 走 Windows 文件关联（等同双击）；不要用带 `windowsHide` 的 `cmd start`，否则播放器窗口可能被隐藏。
 - 用 `spawn` + 参数数组，不经过 shell；本地路径必须是绝对路径且存在。
 - 不记录文件内进度；只写 `watch_history` 的全局/文件夹上次观看。
 - 修改播放器设置只影响下一次播放。
@@ -163,6 +163,8 @@ settings(key,value)  -- key='app' 存 JSON
 18. `sources.type` 不能恢复旧 CHECK；新增类型只改 `SourceType` 和迁移，不要只改 schema，已有库不会自动重建。
 19. 文件夹名不能含 `/` 或 `\`；快捷创建弹窗把 `/` 当父子路径分隔符。
 20. 原生目录选择器由服务端进程弹出，只在服务与浏览器同一台 PC 时有意义；不要把它当成远程客户端的选择器。
+21. 快捷标签使用独立的 `quick-tag-dialog` 叠在文件夹弹窗上；不要把标签表单塞进 `quick-dialog-body`，否则会替换掉尚未保存的文件夹表单。
+22. 追番列表不显示条目数量；本地/HTTP 内容是动态扫描的，不要再用 `items` 表的 BT 计数冒充本地数量。
 
 ## 10. 后续待办
 

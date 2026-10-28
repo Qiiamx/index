@@ -10,8 +10,13 @@ function addFolderOption(select, folder) {
   select.value = folder.id;
 }
 
-function addTagCheckbox(tag) {
-  const container = document.getElementById('folder-tag-options');
+let activeTagForm = null;
+
+function indexRememberTagTarget(button) {
+  activeTagForm = button?.closest('form') ?? null;
+}
+
+function addTagCheckbox(container, tag) {
   if (!container || !tag) return;
   let label = container.querySelector(`input[value="${tag.id}"]`)?.closest('label');
   if (!label) {
@@ -43,8 +48,11 @@ document.body.addEventListener('quickFolderCreated', (event) => {
 });
 
 document.body.addEventListener('quickTagCreated', (event) => {
-  addTagCheckbox(event.detail || {});
-  document.getElementById('quick-dialog')?.close();
+  const container = activeTagForm?.querySelector('#folder-tag-options')
+    ?? document.querySelector('#folder-tag-options');
+  addTagCheckbox(container, event.detail || {});
+  document.getElementById('quick-tag-dialog')?.close();
+  activeTagForm = null;
 });
 
 async function pickLocalFolder() {
@@ -66,9 +74,10 @@ async function pickLocalFolder() {
   }
 }
 
-const quickDialog = document.getElementById('quick-dialog');
-if (quickDialog) {
-  quickDialog.addEventListener('click', (event) => {
-    if (event.target === quickDialog) quickDialog.close();
+for (const id of ['quick-dialog', 'quick-tag-dialog']) {
+  const dialog = document.getElementById(id);
+  if (!dialog) continue;
+  dialog.addEventListener('click', (event) => {
+    if (event.target === dialog) dialog.close();
   });
 }

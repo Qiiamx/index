@@ -44,7 +44,6 @@
     <div class="folder-row" style="padding-left: <%= entry.depth * 20 %>px">
       <div class="folder-main">
         <a class="folder-name" href="/folders/<%= folder.id %>"><%= folder.name %></a>
-        <span class="muted small"><%= counts.get(folder.id) || 0 %> 个本地条目</span>
         <% folderTagList.forEach(function (tag) { %>
           <span class="tag"><%= tag.groupName ? tag.groupName + ' / ' : '' %><%= tag.name %></span>
         <% }) %>

@@ -566,13 +566,6 @@ export class ItemRepository {
       .map(mapItem);
   }
 
-  countByFolder(): Map<string, number> {
-    const rows = this.db
-      .prepare(`SELECT folder_id, COUNT(*) AS count FROM items GROUP BY folder_id`)
-      .all() as any[];
-    return new Map(rows.map((row) => [String(row.folder_id), Number(row.count)]));
-  }
-
   countByTask(): Map<string, number> {
     const rows = this.db
       .prepare(`SELECT task_id, COUNT(*) AS count FROM items GROUP BY task_id`)
